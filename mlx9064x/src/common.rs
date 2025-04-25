@@ -7,7 +7,7 @@ use arrayvec::ArrayVec;
 use bitvec::order::BitOrder;
 use bitvec::slice::{BitSlice, IterOnes};
 use bitvec::store::BitStore;
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c;
 
 use crate::calculations::RamData;
 use crate::error::Error;
@@ -421,7 +421,7 @@ pub fn read_ram<Cam, I2C, const HEIGHT: usize>(
 ) -> Result<RamData, Error<I2C>>
 where
     Cam: MelexisCamera,
-    I2C: i2c::WriteRead + i2c::Write,
+    I2C: i2c::I2c,
 {
     // Pick a maximum size of HEIGHT, as the worst access pattern is still by rows
     let pixel_ranges: ArrayVec<PixelAddressRange, HEIGHT> =

@@ -3,7 +3,7 @@
 use core::convert::{TryFrom, TryInto};
 use core::time::Duration;
 
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::common::{Address, FromI2C, ToI2C};
@@ -26,7 +26,7 @@ pub(crate) trait Register: Into<[u8; 2]> + for<'a> From<&'a [u8]> {
 impl<I2C, R> FromI2C<I2C> for R
 where
     R: Register,
-    I2C: i2c::WriteRead + i2c::Write,
+    I2C: i2c::I2c,
 {
     type Error = Error<I2C>;
 
@@ -36,7 +36,7 @@ where
         // Inner function to reduce the impact of monomorphization for Register. It'll still get
         // duplicated, but it should just be duplicated on I2C, and there should only be one of those
         // in an application (usually).
-        fn read_register<I2C: i2c::WriteRead>(
+        fn read_register<I2C: i2c::I2c>(
             bus: &mut I2C,
             address: u8,
             register_address: Address,
@@ -58,12 +58,12 @@ where
 impl<I2C, R> ToI2C<I2C> for R
 where
     R: Copy + Register,
-    I2C: i2c::WriteRead + i2c::Write,
+    I2C: i2c::I2c,
 {
     type Error = Error<I2C>;
 
     fn to_i2c(&self, bus: &mut I2C, i2c_address: u8) -> Result<(), Self::Error> {
-        fn write_raw_register<I2C: i2c::Write>(
+        fn write_raw_register<I2C: i2c::I2c>(
             bus: &mut I2C,
             address: u8,
             register_address: [u8; 2],

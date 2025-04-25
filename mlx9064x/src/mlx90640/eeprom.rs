@@ -6,7 +6,7 @@ use core::slice;
 use arrayvec::ArrayVec;
 use bitvec::array::BitArray;
 use bitvec::slice::BitSlice;
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c;
 
 // Various floating point operations are not implemented in core, so we use libm to provide them as
 // needed.
@@ -405,7 +405,7 @@ impl Mlx90640Calibration {
 
 impl<I2C> FromI2C<I2C> for Mlx90640Calibration
 where
-    I2C: i2c::WriteRead + i2c::Write,
+    I2C: i2c::I2c,
 {
     type Error = Error<I2C>;
     type Ok = Self;

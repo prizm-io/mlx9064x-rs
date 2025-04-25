@@ -131,7 +131,7 @@
 
 use core::convert::TryInto;
 
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c;
 
 // Various floating point operations are not implemented in core, so we use libm to provide them as
 // needed.
@@ -279,7 +279,7 @@ impl RamData {
         ram_address: Address,
     ) -> Result<i16, I2C::Error>
     where
-        I2C: i2c::WriteRead,
+        I2C: i2c::I2c,
     {
         let address_bytes = ram_address.as_bytes();
         let mut scratch = [0u8; 2];
@@ -298,7 +298,7 @@ impl RamData {
         subpage: Subpage,
     ) -> Result<Self, I2C::Error>
     where
-        I2C: i2c::WriteRead,
+        I2C: i2c::I2c,
         Cam: MelexisCamera,
     {
         let t_a_v_be = Self::read_ram_value(bus, i2c_address, Cam::T_A_V_BE)?;

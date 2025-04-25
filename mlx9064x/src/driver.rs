@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright © 2021 Will Ross
 
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c;
 use paste::paste;
 
 use crate::calculations::*;
@@ -90,7 +90,7 @@ impl<'a, Clb, I2C, const HEIGHT: usize, const BUFFER_SIZE: usize>
     CameraDriver<Clb, I2C, HEIGHT, BUFFER_SIZE>
 where
     Clb: CalibrationData<'a>,
-    I2C: i2c::WriteRead + i2c::Write,
+    I2C: i2c::I2c,
 {
     /// Create a new `CameraDriver`, obtaining the calibration data from the camera over I²C.
     pub fn new(bus: I2C, address: u8) -> Result<Self, Error<I2C>>

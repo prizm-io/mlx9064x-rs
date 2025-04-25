@@ -5,7 +5,7 @@ use std::fmt;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use embedded_hal::blocking::i2c::{Write, WriteRead};
+use embedded_hal::i2c::{I2c, ErrorType};
 use linux_embedded_hal::I2cdev;
 use mlx9064x::{CameraDriver, Mlx90640Driver, Mlx90641Driver};
 
@@ -113,22 +113,18 @@ fn main() -> Result<(), AnyError> {
 
 fn find_frequency<
     'a,
-    Cam,
     Clb,
     I2C,
     const HEIGHT: usize,
-    const WIDTH: usize,
     const NUM_BYTES: usize,
 >(
-    driver: &mut CameraDriver<Cam, Clb, I2C, HEIGHT, WIDTH, NUM_BYTES>,
+    driver: &mut CameraDriver<Clb, I2C, HEIGHT, NUM_BYTES>,
     num_frames: usize,
 ) -> Result<Vec<Instant>, AnyError>
 where
-    Cam: mlx9064x::common::MelexisCamera,
     Clb: mlx9064x::common::CalibrationData<'a>,
-    I2C: Write + WriteRead + 'static,
-    <I2C as WriteRead>::Error: 'static + StdError + fmt::Debug + Sync + Send,
-    <I2C as Write>::Error: 'static + StdError + fmt::Debug + Sync + Send,
+    I2C: I2c + ErrorType + 'static,
+    <I2C as ErrorType>::Error: 'static + StdError + fmt::Debug + Sync + Send,
 {
     let mut results = Vec::new();
     results.reserve(num_frames);
