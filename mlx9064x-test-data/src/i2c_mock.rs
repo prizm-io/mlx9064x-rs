@@ -9,7 +9,7 @@ use core::convert::TryInto;
 use core::ops::RangeInclusive;
 
 use arrayvec::ArrayVec;
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c;
 use mlx9064x::{mlx90640, mlx90641, Address, MelexisCamera};
 
 use super::eeprom_data::{mlx90640_datasheet_eeprom, mlx90641_datasheet_eeprom, EEPROM_LENGTH};
@@ -86,6 +86,12 @@ pub enum MockError {
     ///   operation).
     /// * Read operations that aren't readying a full number of words (each word is two bytes).
     IllegalOperation,
+}
+
+impl embedded_hal::i2c::Error for MockError {
+    fn kind(&self) -> embedded_hal::i2c::ErrorKind {
+        unimplemented!()
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -351,8 +357,18 @@ impl<const RAM_LENGTH: usize> MockCameraBus<RAM_LENGTH> {
     }
 }
 
-impl<const RAM_LENGTH: usize> i2c::Write for MockCameraBus<RAM_LENGTH> {
+impl<const RAM_LENGTH: usize> i2c::ErrorType for MockCameraBus<RAM_LENGTH> {
     type Error = MockError;
+}
+
+impl<const RAM_LENGTH: usize> i2c::I2c for MockCameraBus<RAM_LENGTH> {
+    fn transaction(
+        &mut self,
+        _: u8,
+        _: &mut [embedded_hal::i2c::Operation<'_>],
+    ) -> Result<(), <Self as embedded_hal::i2c::ErrorType>::Error> {
+        unimplemented!()
+    }
 
     fn write(&mut self, i2c_address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
         if i2c_address != self.i2c_address {
@@ -369,10 +385,6 @@ impl<const RAM_LENGTH: usize> i2c::Write for MockCameraBus<RAM_LENGTH> {
         });
         Ok(())
     }
-}
-
-impl<const RAM_LENGTH: usize> i2c::WriteRead for MockCameraBus<RAM_LENGTH> {
-    type Error = MockError;
 
     fn write_read(
         &mut self,

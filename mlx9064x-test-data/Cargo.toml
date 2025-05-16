@@ -13,7 +13,7 @@ publish = false
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
-embedded-hal = "0.2.5"
+embedded-hal = "1.0.0"
 
 [dependencies.mlx9064x]
 path = "../mlx9064x"
