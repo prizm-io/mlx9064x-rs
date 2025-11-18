@@ -27,27 +27,66 @@ fn main() -> Result<(), AnyError> {
             let mut camera = Mlx90640Driver::new(bus, address)?;
             let mut temperatures = vec![0f32; camera.height() * camera.width()];
             let delay = Duration::from_millis(500);
-            camera.generate_image_if_ready(&mut temperatures)?;
-            sleep(delay);
-            camera.generate_image_if_ready(&mut temperatures)?;
+            wait_for_frame(
+                || {
+                    camera
+                        .generate_image_if_ready(&mut temperatures)
+                        .map_err(AnyError::from)
+                },
+                delay,
+            )?;
+            wait_for_frame(
+                || {
+                    camera
+                        .generate_image_if_ready(&mut temperatures)
+                        .map_err(AnyError::from)
+                },
+                delay,
+            )?;
             (temperatures, camera.width())
         }
         "641" => {
             let mut camera = Mlx90641Driver::new(bus, address)?;
             let mut temperatures = vec![0f32; camera.height() * camera.width()];
             let delay = Duration::from_millis(500);
-            camera.generate_image_if_ready(&mut temperatures)?;
-            sleep(delay);
-            camera.generate_image_if_ready(&mut temperatures)?;
+            wait_for_frame(
+                || {
+                    camera
+                        .generate_image_if_ready(&mut temperatures)
+                        .map_err(AnyError::from)
+                },
+                delay,
+            )?;
+            wait_for_frame(
+                || {
+                    camera
+                        .generate_image_if_ready(&mut temperatures)
+                        .map_err(AnyError::from)
+                },
+                delay,
+            )?;
             (temperatures, camera.width())
         }
         "642" => {
             let mut camera = Mlx90642Driver::new(bus, address)?;
             let mut temperatures = vec![0f32; camera.height() * camera.width()];
             let delay = Duration::from_millis(500);
-            camera.generate_image_if_ready(&mut temperatures)?;
-            sleep(delay);
-            camera.generate_image_if_ready(&mut temperatures)?;
+            wait_for_frame(
+                || {
+                    camera
+                        .generate_image_if_ready(&mut temperatures)
+                        .map_err(AnyError::from)
+                },
+                delay,
+            )?;
+            wait_for_frame(
+                || {
+                    camera
+                        .generate_image_if_ready(&mut temperatures)
+                        .map_err(AnyError::from)
+                },
+                delay,
+            )?;
             (temperatures, camera.width())
         }
         _ => {
@@ -68,6 +107,16 @@ fn print_temperatures(temperatures: &[f32], width: usize) {
         }
         print!("{:4.2}  ", temperature);
     }
+}
+
+fn wait_for_frame<F>(mut generator: F, delay: Duration) -> Result<(), AnyError>
+where
+    F: FnMut() -> Result<bool, AnyError>,
+{
+    while !generator()? {
+        sleep(delay);
+    }
+    Ok(())
 }
 
 // It's anyhow::Error, but less functional and less tested.
