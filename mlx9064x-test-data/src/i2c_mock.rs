@@ -29,6 +29,9 @@ pub const MLX90640_RAM_LENGTH: usize = (0x0740 - 0x0400) * 2;
 /// corresponds to 16 bits of data.
 pub const MLX90641_RAM_LENGTH: usize = (0x05C0 - 0x0400) * 2;
 
+/// The MLX90642 uses the same RAM window as the MLX90641.
+pub const MLX90642_RAM_LENGTH: usize = MLX90641_RAM_LENGTH;
+
 const STATUS_REGISTER_ADDRESS: u16 = 0x8000;
 
 // The lowest 6 bits are documented, but the 6th bit is only documented in earlier versions of the
@@ -482,6 +485,10 @@ pub fn mock_mlx90641_at_address(i2c_address: u8) -> MockCameraBus<MLX90641_RAM_L
         i2c_config_register: Rc::new(RefCell::new([0x00, 0x00])),
         recent_operations: Rc::new(RefCell::new(VecDeque::new())),
     }
+}
+
+pub fn mock_mlx90642_at_address(i2c_address: u8) -> MockCameraBus<MLX90642_RAM_LENGTH> {
+    mock_mlx90641_at_address(i2c_address)
 }
 
 pub fn example_mlx90640_at_address(i2c_address: u8) -> MockCameraBus<MLX90640_RAM_LENGTH> {

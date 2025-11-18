@@ -5,13 +5,13 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use linux_embedded_hal::I2cdev;
-use mlx9064x::{Mlx90640Driver, Mlx90641Driver};
+use mlx9064x::{Mlx90640Driver, Mlx90641Driver, Mlx90642Driver};
 
 fn main() -> Result<(), AnyError> {
     let args: Vec<String> = env::args().collect();
     if args.len() != 4 {
         return Err(AnyError::String(
-            "Three arguments required: [640|641] <I2C bus> <camera address>".to_string(),
+            "Three arguments required: [640|641|642] <I2C bus> <camera address>".to_string(),
         ));
     }
     let address: u8 = if args[3].starts_with("0x") {
@@ -41,9 +41,18 @@ fn main() -> Result<(), AnyError> {
             camera.generate_image_if_ready(&mut temperatures)?;
             (temperatures, camera.width())
         }
+        "642" => {
+            let mut camera = Mlx90642Driver::new(bus, address)?;
+            let mut temperatures = vec![0f32; camera.height() * camera.width()];
+            let delay = Duration::from_millis(500);
+            camera.generate_image_if_ready(&mut temperatures)?;
+            sleep(delay);
+            camera.generate_image_if_ready(&mut temperatures)?;
+            (temperatures, camera.width())
+        }
         _ => {
             return Err(AnyError::String(
-                "The second argument must be either 640 or 641".to_string(),
+                "The second argument must be 640, 641, or 642".to_string(),
             ));
         }
     };

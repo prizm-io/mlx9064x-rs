@@ -7,13 +7,13 @@ use std::time::{Duration, Instant};
 
 use embedded_hal::blocking::i2c::{Write, WriteRead};
 use linux_embedded_hal::I2cdev;
-use mlx9064x::{CameraDriver, Mlx90640Driver, Mlx90641Driver};
+use mlx9064x::{CameraDriver, Mlx90640Driver, Mlx90641Driver, Mlx90642Driver};
 
 fn main() -> Result<(), AnyError> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 5 || args.len() > 6 {
         return Err(AnyError::String(
-            "Four arguments required: [640|641] <I2C bus> <camera address> <frame rate> [num_frames]"
+            "Four arguments required: [640|641|642] <I2C bus> <camera address> <frame rate> [num_frames]"
                 .to_string(),
         ));
     }
@@ -43,9 +43,14 @@ fn main() -> Result<(), AnyError> {
             camera.set_frame_rate(frame_rate_num.try_into()?)?;
             find_frequency(&mut camera, num_frames)?
         }
+        "642" => {
+            let mut camera = Mlx90642Driver::new(bus, address)?;
+            camera.set_frame_rate(frame_rate_num.try_into()?)?;
+            find_frequency(&mut camera, num_frames)?
+        }
         _ => {
             return Err(AnyError::String(
-                "The second argument must be either 640 or 641".to_string(),
+                "The second argument must be 640, 641, or 642".to_string(),
             ));
         }
     };

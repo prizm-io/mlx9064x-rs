@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright © 2021 Will Ross
-//! Common functionality between MLX90640 and MLX90641 cameras.
+//! Common functionality shared by the MLX90640, MLX90641, and MLX90642 cameras.
 use core::fmt;
 
 use arrayvec::ArrayVec;

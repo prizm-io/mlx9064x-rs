@@ -1,4 +1,4 @@
-//! A pure-Rust library for accessing the MLX90640 and MLX90641 thermal cameras over I²C.
+//! A pure-Rust library for accessing the MLX90640, MLX90641, and MLX90642 thermal cameras over I²C.
 //!
 //! These cameras have a large amount of calibration data that must be pre-processed before use,
 //! and the output data also requires a somewhat complex process to turn it into temperature data.
@@ -56,7 +56,7 @@
 //!
 //! Most users of the low-level API will probably find the [`common`], [`register`], and
 //! [`calculations`] modules most relevant to their needs, with camera-model specific constants and
-//! types available in the [`mlx90640`] and [`mlx90641`] modules. The `raw_to_temperatures`
+//! types available in the [`mlx90640`], [`mlx90641`], and [`mlx90642`] modules. The `raw_to_temperatures`
 //! benchmark is an example of using the low-level API (but without actually waiting for subpages).
 //!
 //! # Subpages and Access Patterns
@@ -81,6 +81,7 @@ pub mod driver;
 pub mod error;
 pub mod mlx90640;
 pub mod mlx90641;
+pub mod mlx90642;
 pub mod register;
 mod util;
 
@@ -105,4 +106,12 @@ pub type Mlx90641Driver<I2C> = CameraDriver<
     I2C,
     { mlx90641::Mlx90641::HEIGHT },
     { mlx90641::Mlx90641::NUM_PIXELS * 2 },
+>;
+
+/// High-level MLX90642 driver.
+pub type Mlx90642Driver<I2C> = CameraDriver<
+    mlx90642::Mlx90642Calibration,
+    I2C,
+    { mlx90642::Mlx90642::HEIGHT },
+    { mlx90642::Mlx90642::NUM_PIXELS * 2 },
 >;
