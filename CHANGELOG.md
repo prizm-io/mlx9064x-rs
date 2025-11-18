@@ -1,5 +1,8 @@
 # Unreleased
 
+* Added MLX90642 support, including calibration parsing, documentation, and
+  example/mock data so the new driver can be tested alongside the MLX90640 and
+  MLX90641.
 * Updated edition to 2021
 * Improved low-level API ergonomics:
     * The `common::read_ram()` function can read all of the necessary data from

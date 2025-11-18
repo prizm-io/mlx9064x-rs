@@ -4,7 +4,7 @@
 
 # mlx9064x
 
-`mlx9064x` is a library for using the MLX90640 and MLX90641 thermal cameras from
+`mlx9064x` is a library for using the MLX90640, MLX90641, and MLX90642 thermal cameras from
 Melexis. It's `no_std`, but these cameras require a fair bit of memory and
 floating point processing power to use to their fullest extent.
 

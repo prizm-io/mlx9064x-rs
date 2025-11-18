@@ -527,8 +527,10 @@ mod test {
     use mlx9064x_test_data::*;
 
     use crate::common::{FromI2C, ToI2C};
-    use crate::{mlx90640, mlx90641, Subpage};
-    use crate::{I2cRegister, MelexisCamera, Mlx90640Driver, Mlx90641Driver, StatusRegister};
+    use crate::{mlx90640, mlx90641, mlx90642, Subpage};
+    use crate::{
+        I2cRegister, MelexisCamera, Mlx90640Driver, Mlx90641Driver, Mlx90642Driver, StatusRegister,
+    };
 
     fn create_mlx90640() -> Mlx90640Driver<MockCameraBus<MLX90640_RAM_LENGTH>> {
         // Specifically using a non-default address to make sure assumptions aren't being made
@@ -547,10 +549,18 @@ mod test {
             .expect("A MLX90641 camera should be created after loading its data")
     }
 
+    fn create_mlx90642() -> Mlx90642Driver<MockCameraBus<MLX90642_RAM_LENGTH>> {
+        let address: u8 = 0x29;
+        let mock_bus = mock_mlx90642_at_address(address);
+        Mlx90642Driver::new(mock_bus, address)
+            .expect("A MLX90642 camera should be created after loading its data")
+    }
+
     #[test]
     fn smoke_test() {
         create_mlx90640();
         create_mlx90641();
+        create_mlx90642();
         // Test passes if we get this far.
     }
 
@@ -637,6 +647,18 @@ mod test {
         assert!(res.unwrap());
         // Test pixel is (6, 9)
         const PIXEL_INDEX: usize = 5 * mlx90641::Mlx90641::WIDTH + 8;
+        assert_approx_eq!(f32, temperatures[PIXEL_INDEX], 80.129812, epsilon = 0.5);
+    }
+
+    #[test]
+    fn mlx90642_datasheet_integration() {
+        let mut cam = create_mlx90642();
+        let mut temperatures = [0f32; mlx90642::Mlx90642::NUM_PIXELS];
+        let res = cam.generate_image_if_ready(&mut temperatures);
+        assert!(res.is_ok());
+        assert!(res.unwrap());
+        // Same worked-example pixel as the MLX90641 mock
+        const PIXEL_INDEX: usize = 5 * mlx90642::Mlx90642::WIDTH + 8;
         assert_approx_eq!(f32, temperatures[PIXEL_INDEX], 80.129812, epsilon = 0.5);
     }
 
