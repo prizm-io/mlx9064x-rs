@@ -1,5 +1,10 @@
 # Unreleased
 
+* Added MLX90642 support, including calibration parsing, documentation, and
+  example/mock data so the new driver can be tested alongside the MLX90640 and
+  MLX90641.
+* Fixed MLX90642 initialization failures by synthesizing the MLX90641-style
+  Hamming checksum bits that are omitted from MLX90642 EEPROM dumps.
 * Updated edition to 2021
 * Improved low-level API ergonomics:
     * The `common::read_ram()` function can read all of the necessary data from

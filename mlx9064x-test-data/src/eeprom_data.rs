@@ -79,6 +79,14 @@ pub fn mlx90641_datasheet_eeprom() -> [u8; EEPROM_LENGTH] {
     eeprom_data
 }
 
+/// Example MLX90642 EEPROM data.
+///
+/// The MLX90642 shares the same EEPROM layout as the MLX90641, so the datasheet example can be
+/// reused for tests.
+pub fn mlx90642_datasheet_eeprom() -> [u8; EEPROM_LENGTH] {
+    mlx90641_datasheet_eeprom()
+}
+
 mod test {
     #[test]
     fn smoke_mlx90640_eeprom() {
@@ -88,5 +96,10 @@ mod test {
     #[test]
     fn smoke_mlx90641_eeprom() {
         super::mlx90641_datasheet_eeprom();
+    }
+
+    #[test]
+    fn smoke_mlx90642_eeprom() {
+        super::mlx90642_datasheet_eeprom();
     }
 }
