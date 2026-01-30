@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright © 2021 Will Ross
 
-use embedded_hal::i2c;
+use embedded_hal_async::i2c;
 use paste::paste;
 
 use crate::calculations::*;
@@ -25,11 +25,11 @@ macro_rules! set_register_field {
     { $register_access:ident, $field:ident, $typ:ty, $doc:literal } => {
     paste! {
         #[doc = $doc]
-        pub fn [< set_ $field >](&mut self, new_value: $typ) -> Result<(), Error<I2C>> {
-            let mut current = self.$register_access()?;
+        pub async fn [< set_ $field >](&mut self, new_value: $typ) -> Result<(), Error<I2C>> {
+            let mut current = self.$register_access().await?;
             if current.$field() != new_value {
                 current.[< set_ $field >](new_value);
-                self.[< set_ $register_access >](current)
+                self.[< set_ $register_access >](current).await
             } else {
                 Ok(())
             }
@@ -93,20 +93,20 @@ where
     I2C: i2c::I2c,
 {
     /// Create a new `CameraDriver`, obtaining the calibration data from the camera over I²C.
-    pub fn new(bus: I2C, address: u8) -> Result<Self, Error<I2C>>
+    pub async fn new(bus: I2C, address: u8) -> Result<Self, Error<I2C>>
     where
         Clb: FromI2C<I2C, Ok = Clb, Error = Error<I2C>>,
     {
         let mut bus = bus;
-        let calibration = Clb::from_i2c(&mut bus, address)?;
-        Self::new_with_calibration(bus, address, calibration)
+        let calibration = Clb::from_i2c(&mut bus, address).await?;
+        Self::new_with_calibration(bus, address, calibration).await
     }
 
     /// Create a `CameraDriver` for accessing the camera at the given I²C address.
     ///
     /// MLX9064\*s can be configured to use any I²C address (except 0x00), but the default address
     /// is 0x33.
-    pub fn new_with_calibration(
+    pub async fn new_with_calibration(
         bus: I2C,
         address: u8,
         calibration: Clb,
@@ -116,7 +116,7 @@ where
         // Grab the control register values first
         // Need to map from I2C::Error manually as it's an associated type without bounds, so we
         // can't implement From<I2C:Error>
-        let control = ControlRegister::from_i2c(&mut bus, address)?;
+        let control = ControlRegister::from_i2c(&mut bus, address).await?;
         // Cache these values
         let resolution_correction =
             Clb::Camera::resolution_correction(calibration.resolution(), control.resolution());
@@ -136,13 +136,13 @@ where
         })
     }
 
-    fn status_register(&mut self) -> Result<StatusRegister, Error<I2C>> {
-        let register = StatusRegister::from_i2c(&mut self.bus, self.address)?;
+    async fn status_register(&mut self) -> Result<StatusRegister, Error<I2C>> {
+        let register = StatusRegister::from_i2c(&mut self.bus, self.address).await?;
         Ok(register)
     }
 
-    fn set_status_register(&mut self, register: StatusRegister) -> Result<(), Error<I2C>> {
-        register.to_i2c(&mut self.bus, self.address)
+    async fn set_status_register(&mut self, register: StatusRegister) -> Result<(), Error<I2C>> {
+        register.to_i2c(&mut self.bus, self.address).await
     }
 
     fn update_control_register(&mut self, register: &ControlRegister) {
@@ -153,27 +153,27 @@ where
         self.access_pattern = register.access_pattern();
     }
 
-    fn control_register(&mut self) -> Result<ControlRegister, Error<I2C>> {
-        let register = ControlRegister::from_i2c(&mut self.bus, self.address)?;
+    async fn control_register(&mut self) -> Result<ControlRegister, Error<I2C>> {
+        let register = ControlRegister::from_i2c(&mut self.bus, self.address).await?;
         // Update the resolution as well
         self.update_control_register(&register);
         Ok(register)
     }
 
-    fn set_control_register(&mut self, register: ControlRegister) -> Result<(), Error<I2C>> {
+    async fn set_control_register(&mut self, register: ControlRegister) -> Result<(), Error<I2C>> {
         self.update_control_register(&register);
-        register.to_i2c(&mut self.bus, self.address)?;
+        register.to_i2c(&mut self.bus, self.address).await?;
         Ok(())
     }
 
     /// Get the last measured subpage.
-    pub fn last_measured_subpage(&mut self) -> Result<Subpage, Error<I2C>> {
-        Ok(self.status_register()?.last_updated_subpage())
+    pub async fn last_measured_subpage(&mut self) -> Result<Subpage, Error<I2C>> {
+        Ok(self.status_register().await?.last_updated_subpage())
     }
 
     /// Check if there is new data available, and if so, which subpage.
-    pub fn data_available(&mut self) -> Result<Option<Subpage>, Error<I2C>> {
-        let register = self.status_register()?;
+    pub async fn data_available(&mut self) -> Result<Option<Subpage>, Error<I2C>> {
+        let register = self.status_register().await?;
         Ok(if register.new_data() {
             Some(register.last_updated_subpage())
         } else {
@@ -185,17 +185,17 @@ where
     /// more data.
     ///
     /// This flag can only be reset by the controller.
-    pub fn reset_data_available(&mut self) -> Result<(), Error<I2C>> {
-        let mut current = self.status_register()?;
+    pub async fn reset_data_available(&mut self) -> Result<(), Error<I2C>> {
+        let mut current = self.status_register().await?;
         current.reset_new_data();
-        self.set_status_register(current)
+        self.set_status_register(current).await
     }
 
     /// Check if the overwrite enabled flag is set.
     ///
     /// This flag is only effective when `data_hold_enabled` is active.
-    pub fn overwrite_enabled(&mut self) -> Result<bool, Error<I2C>> {
-        Ok(self.status_register()?.overwrite_enabled())
+    pub async fn overwrite_enabled(&mut self) -> Result<bool, Error<I2C>> {
+        Ok(self.status_register().await?.overwrite_enabled())
     }
 
     set_register_field! {
@@ -207,8 +207,8 @@ where
     /// Check if the camera is using subpages.
     ///
     /// When disabled, only one page will be measured. The default is to use subpages.
-    pub fn subpages_enabled(&mut self) -> Result<bool, Error<I2C>> {
-        Ok(self.control_register()?.use_subpages())
+    pub async fn subpages_enabled(&mut self) -> Result<bool, Error<I2C>> {
+        Ok(self.control_register().await?.use_subpages())
     }
 
     set_register_field! {
@@ -221,8 +221,8 @@ where
     ///
     /// When this flag (bit 2 on 0x800D) is set, data is not copied to RAM unless the
     /// `enable_overwrite` flag is set. The default is for this mode to be disabled.
-    pub fn data_hold_enabled(&mut self) -> Result<bool, Error<I2C>> {
-        Ok(self.control_register()?.data_hold())
+    pub async fn data_hold_enabled(&mut self) -> Result<bool, Error<I2C>> {
+        Ok(self.control_register().await?.data_hold())
     }
 
     set_register_field! {
@@ -237,8 +237,8 @@ where
     /// subpage repeat mode, only the subpage set in `selected_subpage` will be measured and
     /// updated. When disabled, the active subpage will alternate between the two. The default is
     /// disabled.
-    pub fn subpage_repeat(&mut self) -> Result<bool, Error<I2C>> {
-        Ok(self.control_register()?.subpage_repeat())
+    pub async fn subpage_repeat(&mut self) -> Result<bool, Error<I2C>> {
+        Ok(self.control_register().await?.subpage_repeat())
     }
 
     set_register_field! {
@@ -253,8 +253,8 @@ where
     /// `Subpage::Zero`.
     ///
     /// [subpage repeat]: CameraDriver::subpage_repeat
-    pub fn selected_subpage(&mut self) -> Result<Subpage, Error<I2C>> {
-        Ok(self.control_register()?.subpage())
+    pub async fn selected_subpage(&mut self) -> Result<Subpage, Error<I2C>> {
+        Ok(self.control_register().await?.subpage())
     }
 
     set_register_field! {
@@ -267,8 +267,8 @@ where
     /// Read the frame rate from the camera.
     ///
     /// The default frame rate is [2 FPS][FrameRate::Two].
-    pub fn frame_rate(&mut self) -> Result<FrameRate, Error<I2C>> {
-        Ok(self.control_register()?.frame_rate())
+    pub async fn frame_rate(&mut self) -> Result<FrameRate, Error<I2C>> {
+        Ok(self.control_register().await?.frame_rate())
     }
 
     set_register_field! {
@@ -282,8 +282,8 @@ where
     /// Get the current resolution of the ADC in the camera.
     ///
     /// The default resolution is [18 bits][Resolution::Eighteen].
-    pub fn resolution(&mut self) -> Result<Resolution, Error<I2C>> {
-        Ok(self.control_register()?.resolution())
+    pub async fn resolution(&mut self) -> Result<Resolution, Error<I2C>> {
+        Ok(self.control_register().await?.resolution())
     }
 
     set_register_field! {
@@ -297,8 +297,8 @@ where
     ///
     /// The default for the MLX90640 is the chess patterm while the default for the MLX90641 is the
     /// interleaved pattern.
-    pub fn access_pattern(&mut self) -> Result<AccessPattern, Error<I2C>> {
-        Ok(self.control_register()?.access_pattern())
+    pub async fn access_pattern(&mut self) -> Result<AccessPattern, Error<I2C>> {
+        Ok(self.control_register().await?.access_pattern())
     }
 
     set_register_field! {
@@ -381,7 +381,7 @@ where
         Clb::Camera::WIDTH
     }
 
-    fn read_ram(&mut self, subpage: Subpage) -> Result<RamData, Error<I2C>> {
+    async fn read_ram(&mut self, subpage: Subpage) -> Result<RamData, Error<I2C>> {
         read_ram::<Clb::Camera, I2C, HEIGHT>(
             &mut self.bus,
             self.address,
@@ -389,14 +389,15 @@ where
             subpage,
             &mut self.pixel_buffer,
         )
+        .await
     }
 
-    pub fn generate_raw_image_subpage_to(
+    pub async fn generate_raw_image_subpage_to(
         &'a mut self,
         subpage: Subpage,
         destination: &mut [f32],
     ) -> Result<(), Error<I2C>> {
-        let ram = self.read_ram(subpage)?;
+        let ram = self.read_ram(subpage).await?;
         let mut valid_pixels =
             Clb::Camera::pixels_in_subpage(subpage, self.access_pattern).into_iter();
         let t_a = raw_pixels_to_ir_data(
@@ -414,12 +415,12 @@ where
         Ok(())
     }
 
-    pub fn generate_image_subpage_to(
+    pub async fn generate_image_subpage_to(
         &'a mut self,
         subpage: Subpage,
         destination: &mut [f32],
     ) -> Result<(), Error<I2C>> {
-        let ram = self.read_ram(subpage)?;
+        let ram = self.read_ram(subpage).await?;
         let mut valid_pixels =
             Clb::Camera::pixels_in_subpage(subpage, self.access_pattern).into_iter();
         let t_a = raw_pixels_to_temperatures(
@@ -442,12 +443,12 @@ where
     ///
     /// This function does *not* check if there is new data, it just copies the current frame of
     /// data.
-    pub fn generate_image_to<'b: 'a>(
+    pub async fn generate_image_to<'b: 'a>(
         &'b mut self,
         destination: &mut [f32],
     ) -> Result<(), Error<I2C>> {
-        let subpage = self.last_measured_subpage()?;
-        self.generate_image_subpage_to(subpage, destination)
+        let subpage = self.last_measured_subpage().await?;
+        self.generate_image_subpage_to(subpage, destination).await
     }
 
     /// Generate a thermal "image" from the camera's current data, if there's new data.
@@ -456,7 +457,7 @@ where
     /// that data into the provided buffer. It will then clear the data ready flag afterwards,
     /// signaliing to the camera that we are ready for more data. The `Ok` value is a boolean for
     /// whether or not data was ready and copied.
-    pub fn generate_image_if_ready(
+    pub async fn generate_image_if_ready(
         &'a mut self,
         destination: &mut [f32],
     ) -> Result<bool, Error<I2C>> {
@@ -464,7 +465,7 @@ where
         let address = self.address;
         let bus = &mut self.bus;
         let pixel_buffer = &mut self.pixel_buffer;
-        let mut status_register = StatusRegister::from_i2c(bus, address)?;
+        let mut status_register = StatusRegister::from_i2c(bus, address).await?;
         if status_register.new_data() {
             let subpage = status_register.last_updated_subpage();
             let mut valid_pixels =
@@ -475,7 +476,8 @@ where
                 self.access_pattern,
                 subpage,
                 pixel_buffer,
-            )?;
+            )
+            .await?;
             let ambient_temperature = raw_pixels_to_temperatures(
                 &self.calibration,
                 self.emissivity,
@@ -490,7 +492,7 @@ where
             );
             self.ambient_temperature = Some(ambient_temperature);
             status_register.reset_new_data();
-            status_register.to_i2c(bus, address)?;
+            status_register.to_i2c(bus, address).await?;
             Ok(true)
         } else {
             Ok(false)
@@ -502,15 +504,15 @@ where
     /// This function ignores any new data, then forces a new measurement by the camera, only
     /// returning when that measurement is complete. This can be used to synchronize frame access
     /// from the controller to the update time of the camera.
-    pub fn synchronize(&mut self) -> Result<(), Error<I2C>> {
-        let mut status_register = self.status_register()?;
+    pub async fn synchronize(&mut self) -> Result<(), Error<I2C>> {
+        let mut status_register = self.status_register().await?;
         status_register.reset_new_data();
         status_register.set_overwrite_enabled(true);
         status_register.set_start_measurement();
-        status_register.to_i2c(&mut self.bus, self.address)?;
+        status_register.to_i2c(&mut self.bus, self.address).await?;
         // Spin while we wait for data
         while !status_register.new_data() {
-            status_register = StatusRegister::from_i2c(&mut self.bus, self.address)?;
+            status_register = StatusRegister::from_i2c(&mut self.bus, self.address).await?;
             core::hint::spin_loop();
         }
         Ok(())

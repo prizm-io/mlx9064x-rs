@@ -7,7 +7,7 @@ use arrayvec::ArrayVec;
 use bitvec::order::BitOrder;
 use bitvec::slice::{BitSlice, IterOnes};
 use bitvec::store::BitStore;
-use embedded_hal::i2c;
+use embedded_hal_async::i2c;
 
 use crate::calculations::RamData;
 use crate::error::Error;
@@ -15,12 +15,13 @@ use crate::register::{AccessPattern, Resolution, Subpage};
 use crate::util::Sealed;
 
 /// A trait for types that can be created by reading data from an I²C device.
+
 pub trait FromI2C<I2C> {
     type Error;
     type Ok;
 
     /// Create an instance of a type using data retrieved over I²C.
-    fn from_i2c(bus: &mut I2C, i2c_address: u8) -> Result<Self::Ok, Self::Error>;
+    async fn from_i2c(bus: &mut I2C, i2c_address: u8) -> Result<Self::Ok, Self::Error>;
 }
 
 /// A trait for types that can be written to an I²C device.
@@ -28,7 +29,7 @@ pub trait ToI2C<I2C> {
     type Error;
 
     /// Write the value of this type to the specified I²C device.
-    fn to_i2c(&self, bus: &mut I2C, i2c_address: u8) -> Result<(), Self::Error>;
+    async fn to_i2c(&self, bus: &mut I2C, i2c_address: u8) -> Result<(), Self::Error>;
 }
 
 /// A trait for flagging individual pixels.
@@ -412,7 +413,7 @@ fn alpha_corr_n(n: usize, basic_range: usize, ct: &[i16], k_s_to: &[f32]) -> f32
 }
 
 /// Read a frame of data from the camera's memory.
-pub fn read_ram<Cam, I2C, const HEIGHT: usize>(
+pub async fn read_ram<Cam, I2C, const HEIGHT: usize>(
     bus: &mut I2C,
     i2c_address: u8,
     access_pattern: AccessPattern,
@@ -436,8 +437,11 @@ where
             &address_bytes[..],
             &mut pixel_data_buffer[offset..(offset + range.length)],
         )
+        .await
         .map_err(Error::I2cWriteReadError)?;
     }
     // And now to read the non-pixel information out
-    RamData::from_i2c::<I2C, Cam>(bus, i2c_address, subpage).map_err(Error::I2cWriteReadError)
+    RamData::from_i2c::<I2C, Cam>(bus, i2c_address, subpage)
+        .await
+        .map_err(Error::I2cWriteReadError)
 }

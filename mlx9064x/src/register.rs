@@ -3,7 +3,7 @@
 use core::convert::{TryFrom, TryInto};
 use core::time::Duration;
 
-use embedded_hal::i2c;
+use embedded_hal_async::i2c;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::common::{Address, FromI2C, ToI2C};
@@ -32,24 +32,26 @@ where
 
     type Ok = R;
 
-    fn from_i2c(bus: &mut I2C, i2c_address: u8) -> Result<Self::Ok, Self::Error> {
+    async fn from_i2c(bus: &mut I2C, i2c_address: u8) -> Result<Self::Ok, Self::Error> {
         // Inner function to reduce the impact of monomorphization for Register. It'll still get
         // duplicated, but it should just be duplicated on I2C, and there should only be one of those
         // in an application (usually).
-        fn read_register<I2C: i2c::I2c>(
+        async fn read_register<I2C: i2c::I2c>(
             bus: &mut I2C,
             address: u8,
             register_address: Address,
         ) -> Result<[u8; 2], I2C::Error> {
             let register_address_bytes = register_address.as_bytes();
             let mut register_bytes = [0u8; 2];
-            bus.write_read(address, &register_address_bytes, &mut register_bytes)?;
+            bus.write_read(address, &register_address_bytes, &mut register_bytes)
+                .await?;
             Ok(register_bytes)
         }
 
         let register_address = R::address();
-        let register_value =
-            read_register(bus, i2c_address, register_address).map_err(Error::I2cWriteReadError)?;
+        let register_value = read_register(bus, i2c_address, register_address)
+            .await
+            .map_err(Error::I2cWriteReadError)?;
         let register = R::from(&register_value[..]);
         Ok(register)
     }
@@ -62,8 +64,8 @@ where
 {
     type Error = Error<I2C>;
 
-    fn to_i2c(&self, bus: &mut I2C, i2c_address: u8) -> Result<(), Self::Error> {
-        fn write_raw_register<I2C: i2c::I2c>(
+    async fn to_i2c(&self, bus: &mut I2C, i2c_address: u8) -> Result<(), Self::Error> {
+        async fn write_raw_register<I2C: i2c::I2c>(
             bus: &mut I2C,
             address: u8,
             register_address: [u8; 2],
@@ -75,7 +77,7 @@ where
                 register_data[0],
                 register_data[1],
             ];
-            bus.write(address, &combined)?;
+            bus.write(address, &combined).await?;
             Ok(())
         }
 
@@ -87,6 +89,7 @@ where
             register_address.as_bytes(),
             register_bytes,
         )
+        .await
         .map_err(Error::I2cWriteError)?;
         Ok(())
     }

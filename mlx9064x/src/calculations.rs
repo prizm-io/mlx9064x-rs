@@ -131,7 +131,7 @@
 
 use core::convert::TryInto;
 
-use embedded_hal::i2c;
+use embedded_hal_async::i2c;
 
 // Various floating point operations are not implemented in core, so we use libm to provide them as
 // needed.
@@ -273,7 +273,7 @@ impl RamData {
     ///
     /// All values in RAM are signed 16-bit integers, so this function also converts the raw values
     /// into [`i16`].
-    fn read_ram_value<I2C>(
+    async fn read_ram_value<I2C>(
         bus: &mut I2C,
         i2c_address: u8,
         ram_address: Address,
@@ -283,7 +283,8 @@ impl RamData {
     {
         let address_bytes = ram_address.as_bytes();
         let mut scratch = [0u8; 2];
-        bus.write_read(i2c_address, &address_bytes[..], &mut scratch[..])?;
+        bus.write_read(i2c_address, &address_bytes[..], &mut scratch[..])
+            .await?;
         Ok(i16::from_be_bytes(scratch))
     }
 
@@ -292,7 +293,7 @@ impl RamData {
     /// The non-pixel values are $T_{a_{V_{BE}}}$,
     /// $T_{a_{PTAT}}$, $V_{DD_{pix}}$, gain and the corresponding compensation pixel for the given
     /// subpage.
-    pub fn from_i2c<I2C, Cam>(
+    pub async fn from_i2c<I2C, Cam>(
         bus: &mut I2C,
         i2c_address: u8,
         subpage: Subpage,
@@ -301,12 +302,12 @@ impl RamData {
         I2C: i2c::I2c,
         Cam: MelexisCamera,
     {
-        let t_a_v_be = Self::read_ram_value(bus, i2c_address, Cam::T_A_V_BE)?;
-        let t_a_ptat = Self::read_ram_value(bus, i2c_address, Cam::T_A_PTAT)?;
-        let v_dd_pixel = Self::read_ram_value(bus, i2c_address, Cam::V_DD_PIXEL)?;
-        let gain = Self::read_ram_value(bus, i2c_address, Cam::GAIN)?;
+        let t_a_v_be = Self::read_ram_value(bus, i2c_address, Cam::T_A_V_BE).await?;
+        let t_a_ptat = Self::read_ram_value(bus, i2c_address, Cam::T_A_PTAT).await?;
+        let v_dd_pixel = Self::read_ram_value(bus, i2c_address, Cam::V_DD_PIXEL).await?;
+        let gain = Self::read_ram_value(bus, i2c_address, Cam::GAIN).await?;
         let compensation_pixel =
-            Self::read_ram_value(bus, i2c_address, Cam::compensation_pixel(subpage))?;
+            Self::read_ram_value(bus, i2c_address, Cam::compensation_pixel(subpage)).await?;
         Ok(Self {
             t_a_v_be,
             t_a_ptat,

@@ -5,7 +5,7 @@ extern crate std;
 
 use core::fmt;
 
-use embedded_hal::i2c;
+use embedded_hal_async::i2c;
 
 /// Specific kinds of errors that don't involve I²C.
 #[derive(Clone, Debug, PartialEq)]
